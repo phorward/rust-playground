@@ -58,13 +58,41 @@ impl PartialEq<&Self> for BoxedObj {
     }
 }
 
+// PartialOrdBoxedObj ----------------------------------------------------------
+
+trait PartialOrdBoxedObj {
+    fn dyn_partial_cmp(&self, other: &BoxedObj) -> Option<std::cmp::Ordering>;
+}
+
+impl<T> PartialOrdBoxedObj for T
+where
+    T: 'static + Obj + PartialEq + PartialOrd,
+{
+    fn dyn_partial_cmp(&self, other: &BoxedObj) -> Option<std::cmp::Ordering> {
+        if let Some(other) = other.as_any().downcast_ref::<T>() {
+            self.partial_cmp(other)
+        } else {
+            None
+        }
+    }
+}
+
+impl PartialOrd for BoxedObj {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.dyn_partial_cmp(other)
+    }
+}
+
 // Obj -------------------------------------------------------------------------
 
-trait Obj: AnyBoxedObj + PartialEqBoxedObj + std::any::Any + std::fmt::Debug {}
+trait Obj:
+    AnyBoxedObj + PartialEqBoxedObj + PartialOrdBoxedObj + std::any::Any + std::fmt::Debug
+{
+}
 
 // Val -------------------------------------------------------------------------
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, PartialOrd)]
 enum Val {
     Int(i64),
     Obj(Box<dyn Obj>),
@@ -103,7 +131,7 @@ impl Val {
 
 // Obj Complex -----------------------------------------------------------------
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, PartialOrd)]
 struct Complex {
     x: i64,
     y: i64,
@@ -147,6 +175,10 @@ fn main() {
 
     // Compare stuff
     println!("val == val2 = {}", val == val2);
+    println!("val < val2 = {}", val < val2);
+    println!("val > val2 = {}", val > val2);
+    println!("val <= val2 = {}", val <= val2);
+    println!("val >= val2 = {}", val >= val2);
     println!("val == ival = {}", val == ival);
 
     // Get reference to complex inside of the object.
@@ -165,6 +197,10 @@ fn main() {
 
     // Compare stuff
     println!("val == val2 = {}", val == val2);
+    println!("val < val2 = {}", val < val2);
+    println!("val > val2 = {}", val > val2);
+    println!("val <= val2 = {}", val <= val2);
+    println!("val >= val2 = {}", val >= val2);
     println!("val == ival = {}", val == ival);
 
     // Get the object, consuming the val.
